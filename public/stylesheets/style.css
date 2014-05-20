@@ -1,0 +1,28 @@
+
+body{
+	font-family: sans-serif;
+}
+
+span{
+	color: blue;
+	font-weight: 7100;
+}
+
+h3{
+	color: blue;
+	margin: 12px;
+}
+
+#new-msg-form{
+	margin: 12px;
+}
+
+#message-board{
+	border: 1px solid lightgrey;
+	border-radius: 4px;
+	margin: 12px;
+	min-height: 90px;
+	overflow: auto;
+	padding: 6px;
+	/*width:  450px;*/
+}
