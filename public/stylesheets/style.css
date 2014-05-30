@@ -1,23 +1,34 @@
 
-body{
+body
+{
 	font-family: sans-serif;
 }
 
-span{
+span
+{
 	color: blue;
 	font-weight: 7100;
 }
 
-h3{
+h3
+{
 	color: blue;
 	margin: 12px;
 }
 
-#new-msg-form{
+h4
+{
+	color: blue;
+	margin-left: 15px;
+}
+
+#new-msg-form
+{
 	margin: 12px;
 }
 
-#message-board{
+#message-board
+{
 	border: 1px solid lightgrey;
 	border-radius: 4px;
 	margin: 12px;

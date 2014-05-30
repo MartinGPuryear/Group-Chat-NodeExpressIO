@@ -1,93 +1,103 @@
 module.exports = function Route(app)
 {
+  MIN_ROOM = 1;
+  MAX_ROOM = 4;
+
   var num_users = 0;
   var all_msgs = [];
-  all_msgs[0] = [];
-  all_msgs[1] = [];
-  all_msgs[2] = [];
-  
 
-  app.io.route('ready',      function(request) 
-    { 
-      console.log('RECEIVED: ready'); 
+  for (var room = MAX_ROOM; room >= MIN_ROOM; room--) 
+  {
+    all_msgs[room] = [];
+  }
+
+  app.io.route('ready', function(request)
+    {
+      request.session.connect_count = request.session.connect_count || 0;   //  convert to 0, if undefined
+      request.session.connect_count++;
     });
 
   app.io.route('new_user_requested', function(request)
     {
-      console.log('RECEIVED: new_user_requested'); 
+      if (request.session.connect_count > 1)
+      {
+        console.log('new_user_requested.  Already logged in, so incrementing connect_count and returning....'); 
+        return;
+      }
 
       if (!request.data.user_name)
       {
+        console.log('EMIT: error_new_user - !name'); 
         request.io.emit('error_new_user', "Name is required");
-        console.log('EMIT: error_new_user'); 
         return;
       }
-      else
+
+      var room = parseInt(request.data.room);
+      if ((room < MIN_ROOM) || (room > MAX_ROOM) || (isNaN(room)))
       {
-        num_users++;
-        request.session.user_name = request.data.user_name;
-        console.log('Logged in user is: ', request.session.user_name, ', num_users is now ', num_users);
-        
-        if (request.data.user_name == "Martin") 
-        {
-          request.session.room = 2;
-          msg = { user_name: request.session.user_name, message: 'has joined the room 2 conversation' };
-          request.io.join(1);
-        } 
-        else
-        {
-          msg = { user_name: request.session.user_name, message: 'has joined the room 1 conversation' };
-          request.session.room = 1;
-        }
-        request.io.join(request.session.room);
-
-        all_msgs[request.session.room].push( msg );
-
-
-        request.io.room(request.session.room).broadcast('new_user_arrived', msg )
-        console.log('BROADCAST: new_user_arrived'); 
-
-        request.io.emit('state_of_the_world', { all_messages: all_msgs[request.session.room] });
-        console.log('EMIT: state_of_the_world'); 
+        console.log('EMIT: error_new_user - room =', room); 
+        request.io.emit('error_new_user', "Room (" + room + ") must be a number between " + MIN_ROOM + " and " + MAX_ROOM);
+        return;
       }
+      request.session.room = room;
+      num_users++;
+      request.session.user_name = request.data.user_name;
+      console.log('Logged in user is ' + request.session.user_name + ', num_users is now', num_users);
+      
+      request.io.join(request.session.room);
+      msg = { user_name: request.session.user_name, message: 'has joined the room '+request.session.room+' conversation.' };
+      all_msgs[request.session.room].push( msg );
+
+      request.io.room(request.session.room).broadcast('new_user_arrived', msg )
+      request.io.emit('state_of_the_world', { all_messages: all_msgs[request.session.room] });
     });
 
-  app.io.route('posting_new_msg', function(request) 
+  app.io.route('posting_new_msg', function(request)
     {
-      console.log('RECEIVED: posting_new_msg: ', request.data.json_msg.message); 
       var msg = request.data.json_msg.message;
       if (msg)
       { 
         var name = request.session.user_name;
         all_msgs[request.session.room].push( { user_name: name, message: msg });
-        console.log(all_msgs[request.session.room]);
 
-        request.io.room(request.session.room).broadcast('new_msg_arrived', { user_name: name, message: msg } )
-        console.log('BROADCAST: new_msg_arrived'); 
+        request.io.room(request.session.room).broadcast('new_msg_arrived', { user_name: name, message: msg } );
       }
     });
 
-  app.io.route('disconnect', function(request) 
+  app.io.route('disconnect', function(request)
     {
-      console.log("RECEIVED: disconnect (" + request.session.user_name + ")");
+      
+      request.session.connect_count--;
+      if (request.session.connect_count > 1)
+      {
+        console.log('disconnect, but this session still has a connect_count');
+        return;
+      }
+
       if (request.session.user_name === undefined)
-      { 
+      {
+        console.log("disconnect, undefined name");
         return;
       }
       num_users--;
       
-      request.io.leave(1);
-      console.log(request.session.user_name, ' has left the conversation, and num_users is now: ', num_users );
+      request.io.leave(request.session.room);
+      console.log(request.session.user_name + ' has left the conversation, and num_users is now: ', num_users );
       if (num_users == 0)
       {
-        all_msgs[request.session.room] = [];
-        return;
+          all_msgs[request.session.room] = [];
       }
-      var msg = { user_name: request.session.user_name, message: 'has left the conversation'};
-      all_msgs[request.session.room].push( msg );
+      else
+      {
+        var msg = { user_name: request.session.user_name, message: 'has left the conversation'};
+        all_msgs[request.session.room].push( msg );
 
-      request.io.room(request.session.room).broadcast('user_disconnected', { user_name: request.session.user_name, message: 'has left the conversation' } );
-      console.log("BROADCAST: user_disconnected (" + request.session.user_name + ")");
+        request.io.room(request.session.room).broadcast('user_disconnected', { user_name: request.session.user_name, message: 'has left the conversation' } );
+      }
+
+      request.session.room = null;
+      request.session.user_name = null;
+      request.session.connect_count = 0;
     });
 
   app.get('/', function(request, response)
@@ -98,6 +108,6 @@ module.exports = function Route(app)
   app.get('/index', function(request, response)
     {
       response.redirect('/');      
-    };
+    });
 
 }

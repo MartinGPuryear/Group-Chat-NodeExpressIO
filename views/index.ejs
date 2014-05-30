@@ -19,82 +19,77 @@
 	<script type='text/javascript'>
 	
 		var io = io.connect('http://localhost:6789'); 
-    var namestr;
+    var nameStr;
+    var chatRoom;
 
-		$(document).ready(function ()
-		{
-			io.emit('ready');
-      console.log('EMIT: ready')
-
-      nameStr = prompt('Your name:');     
-      io.emit('new_user_requested', { user_name: nameStr });
-      console.log('EMIT: new_user_requested')
-
-      io.on('error_new_user', function(errorMsg)
-        {
-          console.log('RECEIVED: error_new_user')
-          alert(errorMsg.error);
-          nameStr = prompt('Your name:');     
-          io.emit('new_user_requested', { user_name: nameStr });
-          console.log('EMIT: new_user_requested')
-        });
-  
-      io.on('new_user_arrived', function(msg)
-        {
-          console.log('RECEIVED: new_user_arrived');
-          log_msg(msg);
-        });
-
-      io.on('user_disconnected', function(msg)
-        {
-          console.log('RECEIVED: user_disconnected')
-          log_msg(msg);
-        });
-
-      io.on('new_msg_arrived', function(msg)
-        {
-          console.log('RECEIVED: new_msg_arrived')
-          log_msg(msg);
-        });
-
-      io.on('state_of_the_world', function(full_log)
-        {
-          $('h3').html("Group Chat - " + nameStr);
-
-          console.log('RECEIVED: new_user_arrived');
-          full_log.all_messages.forEach(function(item)
-            {
-               log_msg(item);
-            });
-        });
-
-      function log_msg(item)
+    $(document).ready(function ()
       {
-        log_str = '<span>' + item.user_name + '</span>:\t' + item.message;
-        console.log('log_msg: ', log_str);
-        $('#message-board').prepend('<div>' + log_str + '</div>');
-      }
+        io.emit('ready');
+        request_user();
 
-      $('#new-msg-form').submit(function(evt)
-        {
-          var input_array = $(this).serializeArray();
-          console.log(input_array);
-          var json_obj = {};
-          $('#msg-input').val('');
+        $('#new-msg-form').submit(function(evt)
+          {
+            var input_array = $(this).serializeArray();
+            var json_obj = {};
+            $('#msg-input').val('');
 
-          $.each(input_array, function()
-            {
-              json_obj[this.name] = this.value || '';
-            });
+            $.each(input_array, function()
+              {
+                json_obj[this.name] = this.value || '';
+              });
 
-          io.emit('posting_new_msg', { json_msg: json_obj } );
-          console.log('EMIT: posting_new_msg');
-          log_msg({ user_name: nameStr, message: json_obj.message });
+            io.emit('posting_new_msg', { json_msg: json_obj } );
+            log_msg({ user_name: nameStr, message: json_obj.message });
 
-          return false;
-        });
+            return false;
+          });
 
-		});
+        function request_user()
+          {
+            nameStr = prompt('Your name (shown with each msg):', '');     
+            chatRoom = parseInt(prompt('Chat room:', 0));     
+            io.emit('new_user_requested', { user_name: nameStr, room: chatRoom });
+          }
+
+        function log_msg(item)
+          {
+            log_str = '<span>' + item.user_name + '</span>:\t' + item.message;
+            $('#message-board').prepend('<div>' + log_str + '</div>');
+          }
+
+        io.on('error_new_user', function(errorMsg)
+          {
+            alert(errorMsg);
+            request_user();
+          });
+
+        io.on('new_user_arrived', function(msg)
+          {
+            log_msg(msg);
+          });
+
+        io.on('user_disconnected', function(msg)
+          {
+            log_msg(msg);
+          });
+
+        io.on('new_msg_arrived', function(msg)
+          {
+            log_msg(msg);
+          });
+
+        io.on('state_of_the_world', function(full_log)
+          {
+            $('h3').html("Group Chat - " + nameStr);
+            $('h4').html("Room " + chatRoom);
+
+            full_log.all_messages.forEach(function(item)
+              {
+                 log_msg(item);
+              });
+          });
+
+      });
 
 	</script>
 </head>
@@ -102,6 +97,7 @@
 <body class='container-fluid'>
 
   <h3></h3>
+  <h4></h4>
 
   <form action='#' method='post' id='new-msg-form' class='form-vertical'>
 
