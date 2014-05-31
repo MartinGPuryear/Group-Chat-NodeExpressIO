@@ -14,8 +14,6 @@ app.configure(function()
     app.use(express.cookieParser());  
 
     //    handle POST data
-    // app.use(express.bodyParser());                  
-    //    above is deprecated -- below will be in Express 3.0
     app.use(express.urlencoded());
     app.use(express.json());
 

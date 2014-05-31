@@ -1,39 +1,40 @@
-
+/*
+  CSS file for the real-time groiup chat application
+*/
 body
 {
-	font-family: sans-serif;
-}
-
-span
-{
-	color: blue;
-	font-weight: 7100;
+  font-family: sans-serif;
 }
 
 h3
 {
-	color: blue;
-	margin: 12px;
+  color: #226baa;
+  margin: 12px;
 }
 
 h4
 {
-	color: blue;
-	margin-left: 15px;
+  color: #226baa;
+  margin-left: 15px;
+}
+
+span.name
+{
+  color: #226baa;
+  font-weight: 700;
 }
 
 #new-msg-form
 {
-	margin: 12px;
+  margin: 12px;
 }
 
 #message-board
 {
-	border: 1px solid lightgrey;
-	border-radius: 4px;
-	margin: 12px;
-	min-height: 90px;
-	overflow: auto;
-	padding: 6px;
-	/*width:  450px;*/
+  border: 1px solid lightgrey;
+  border-radius: 4px;
+  margin: 12px;
+  min-height: 90px;
+  overflow: auto;
+  padding: 6px;
 }

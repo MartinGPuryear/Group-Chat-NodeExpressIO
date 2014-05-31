@@ -22,6 +22,19 @@
     var nameStr;
     var chatRoom;
 
+    function request_user()
+      {
+        nameStr = prompt('Your name (shown with each msg):', '');     
+        chatRoom = prompt('Chat room:', '');     
+        io.emit('new_user_requested', { user_name: nameStr, room: chatRoom });
+      }
+
+    function log_msg(item)
+      {
+        log_str = "<span class='name'>" + item.user_name + "</span>: " + item.message;
+        $('#message-board').prepend("<div>" + log_str + "</div>");
+      }
+
     $(document).ready(function ()
       {
         io.emit('ready');
@@ -43,19 +56,6 @@
 
             return false;
           });
-
-        function request_user()
-          {
-            nameStr = prompt('Your name (shown with each msg):', '');     
-            chatRoom = parseInt(prompt('Chat room:', 0));     
-            io.emit('new_user_requested', { user_name: nameStr, room: chatRoom });
-          }
-
-        function log_msg(item)
-          {
-            log_str = '<span>' + item.user_name + '</span>:\t' + item.message;
-            $('#message-board').prepend('<div>' + log_str + '</div>');
-          }
 
         io.on('error_new_user', function(errorMsg)
           {
@@ -88,7 +88,6 @@
                  log_msg(item);
               });
           });
-
       });
 
 	</script>
@@ -101,7 +100,7 @@
 
   <form action='#' method='post' id='new-msg-form' class='form-vertical'>
 
-    <input type='text' id='msg-input' name='message' class='form-control' placeholder='send a message to everyone' autofocus />
+    <input type='text' id='msg-input' name='message' class='form-control' placeholder='send a message to your room' autofocus />
     <input type='submit' id='msg-submit' class='btn btn-primary' value='Send' />
 
   </form>

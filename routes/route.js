@@ -1,15 +1,48 @@
 module.exports = function Route(app)
 {
-  MIN_ROOM = 1;
-  MAX_ROOM = 4;
+  var num_users = {};
+  var room_msgs = {};
 
-  var num_users = 0;
-  var all_msgs = [];
+  function session_already_connected(request)
+    {
+      if (request.session.connect_count > 1)
+      {
+        console.log('new_user_requested.  Already logged in and connect_count incremented, so doing nothing else....'); 
+        return true;
+      }
+      return false;
+    }
 
-  for (var room = MAX_ROOM; room >= MIN_ROOM; room--) 
-  {
-    all_msgs[room] = [];
-  }
+  function validate_inputs(request)
+    {
+      if (!request.data)
+      {
+        return false;
+      }
+
+      if (request.data.user_name)
+      {
+        request.data.user_name = request.data.user_name.trim();
+      }
+      if (!request.data.user_name)
+      {
+        console.log('EMIT: error_new_user - !name'); 
+        request.io.emit('error_new_user', "Name is required");
+        return false;
+      }
+
+      if (request.data.room)
+      {
+        request.data.room = request.data.room.trim();
+      }
+      if (!request.data.room)
+      {
+        console.log('EMIT: error_new_user - room =', request.data.room); 
+        request.io.emit('error_new_user', "Room cannot be blank");
+        return false;
+      }
+      return true;
+    }
 
   app.io.route('ready', function(request)
     {
@@ -19,54 +52,46 @@ module.exports = function Route(app)
 
   app.io.route('new_user_requested', function(request)
     {
-      if (request.session.connect_count > 1)
+      if (session_already_connected(request) || !validate_inputs(request))
       {
-        console.log('new_user_requested.  Already logged in, so incrementing connect_count and returning....'); 
-        return;
+        return;         //  error msg already emitted back to client
       }
-
-      if (!request.data.user_name)
-      {
-        console.log('EMIT: error_new_user - !name'); 
-        request.io.emit('error_new_user', "Name is required");
-        return;
-      }
-
-      var room = parseInt(request.data.room);
-      if ((room < MIN_ROOM) || (room > MAX_ROOM) || (isNaN(room)))
-      {
-        console.log('EMIT: error_new_user - room =', room); 
-        request.io.emit('error_new_user', "Room (" + room + ") must be a number between " + MIN_ROOM + " and " + MAX_ROOM);
-        return;
-      }
-      request.session.room = room;
-      num_users++;
       request.session.user_name = request.data.user_name;
-      console.log('Logged in user is ' + request.session.user_name + ', num_users is now', num_users);
+      console.log('Logged in user is ' + request.session.user_name + ', num_users[' + request.session.room + '] is now: ' + num_users[request.session.room] );
       
+      request.session.room = request.data.room;
+      num_users[request.session.room] = num_users[request.session.room] || 0;
+      num_users[request.session.room]++;
+
       request.io.join(request.session.room);
       msg = { user_name: request.session.user_name, message: 'has joined the room '+request.session.room+' conversation.' };
-      all_msgs[request.session.room].push( msg );
+      
+      room_msgs[request.session.room] = room_msgs[request.session.room] || [];
+      room_msgs[request.session.room].push( msg );
 
       request.io.room(request.session.room).broadcast('new_user_arrived', msg )
-      request.io.emit('state_of_the_world', { all_messages: all_msgs[request.session.room] });
+      request.io.emit('state_of_the_world', { all_messages: room_msgs[request.session.room] });
     });
 
   app.io.route('posting_new_msg', function(request)
     {
-      var msg = request.data.json_msg.message;
+      if (!request.data || !request.data.json_msg || !request.data.json_msg.message)
+      {
+        return;
+      }
+
+      var msg = request.data.json_msg.message.trim();
       if (msg)
       { 
         var name = request.session.user_name;
-        all_msgs[request.session.room].push( { user_name: name, message: msg });
+        room_msgs[request.session.room].push( { user_name: name, message: msg });
 
         request.io.room(request.session.room).broadcast('new_msg_arrived', { user_name: name, message: msg } );
       }
     });
 
   app.io.route('disconnect', function(request)
-    {
-      
+    {      
       request.session.connect_count--;
       if (request.session.connect_count > 1)
       {
@@ -79,25 +104,25 @@ module.exports = function Route(app)
         console.log("disconnect, undefined name");
         return;
       }
-      num_users--;
+      num_users[request.session.room]--;
       
       request.io.leave(request.session.room);
-      console.log(request.session.user_name + ' has left the conversation, and num_users is now: ', num_users );
-      if (num_users == 0)
+      console.log(request.session.user_name + ' has left the conversation, and num_users[' + request.session.room + '] is now: ' + num_users[request.session.room] );
+      if (num_users[request.session.room] == 0)
       {
-          all_msgs[request.session.room] = [];
+          room_msgs[request.session.room] = null;
       }
       else
       {
         var msg = { user_name: request.session.user_name, message: 'has left the conversation'};
-        all_msgs[request.session.room].push( msg );
+        room_msgs[request.session.room].push( msg );
 
         request.io.room(request.session.room).broadcast('user_disconnected', { user_name: request.session.user_name, message: 'has left the conversation' } );
       }
 
+      request.session.connect_count = 0;
       request.session.room = null;
       request.session.user_name = null;
-      request.session.connect_count = 0;
     });
 
   app.get('/', function(request, response)
