@@ -3,7 +3,7 @@
 <head>
 	<meta charset='UTF-8' />
 	<meta http-equiv='X-UA-Compatible' content='IE=edge' />
-	<meta name='description' content='First Node/ExpressIO assignment' />
+	<meta name='description' content='Node/ExpressIO chat room' />
 	<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 	<meta name='author' content='Martin Puryear' />
 
@@ -18,10 +18,13 @@
 
 	<script type='text/javascript'>
 	
-		var io = io.connect('http://localhost:6789'); 
+		// connect via socket.io to express server immediately
+    var io = io.connect('http://localhost:6789'); 
     var nameStr;
     var chatRoom;
 
+    //  Gather user info and emit it to server.  In response, we
+    //  should receive either error_new_user or state_of_the_world
     function request_user()
       {
         nameStr = prompt('Your name (shown with each msg):', '');     
@@ -29,17 +32,22 @@
         io.emit('new_user_requested', { user_name: nameStr, room: chatRoom });
       }
 
+    //  Add this message (including formatted user_name) to our log.
+    //  List msgs in reverse chronological order - most recent first.
     function log_msg(item)
       {
-        log_str = "<span class='name'>" + item.user_name + "</span>: " + item.message;
+        log_str = "<span class='gc-name gc-blue'>" + item.user_name + "</span>: " + item.message;
         $('#message-board').prepend("<div>" + log_str + "</div>");
       }
 
+    //  Includes socket.io listener functions - each socket msg causes UI
+    //  update, so we attach listeners only after client HTML is rendered.
     $(document).ready(function ()
       {
-        io.emit('ready');
+        io.emit('client_ready');
         request_user();
 
+        //  Client submitted a new msg: EMIT it to server and update UI.
         $('#new-msg-form').submit(function(evt)
           {
             var input_array = $(this).serializeArray();
@@ -54,34 +62,40 @@
             io.emit('posting_new_msg', { json_msg: json_obj } );
             log_msg({ user_name: nameStr, message: json_obj.message });
 
-            return false;
+            return false;            //  no need for an HTML refresh
           });
 
+        //  Client sent malformed user data.  Pop an error box & try again.
         io.on('error_new_user', function(errorMsg)
           {
             alert(errorMsg);
             request_user();
           });
 
+        //  Another client arrived in the room.  Display the enclosed msg.
         io.on('new_user_arrived', function(msg)
           {
             log_msg(msg);
           });
 
+        //  Another client departed the room.  Display the enclosed msg.
         io.on('user_disconnected', function(msg)
           {
             log_msg(msg);
           });
 
+        //  Another client broadcast a msg.  Display the enclosed msg.
         io.on('new_msg_arrived', function(msg)
           {
             log_msg(msg);
           });
 
+        //  Client was successfully added.  Finish UI setup, receive a
+        //  list of all chat msgs sent to this room; display the msgs. 
         io.on('state_of_the_world', function(full_log)
           {
-            $('h3').html("Group Chat - " + nameStr);
-            $('h4').html("Room " + chatRoom);
+            $('.gc-title span').html("- " + nameStr);
+            $('.gc-room').html("Room " + chatRoom);
 
             full_log.all_messages.forEach(function(item)
               {
@@ -95,14 +109,13 @@
 
 <body class='container-fluid'>
 
-  <h3></h3>
-  <h4></h4>
+  <h3 class='gc-title gc-blue'>Group Chat <span></span></h3>
+
+  <h4 class='gc-room gc-blue'></h4>
 
   <form action='#' method='post' id='new-msg-form' class='form-vertical'>
-
-    <input type='text' id='msg-input' name='message' class='form-control' placeholder='send a message to your room' autofocus />
+    <input type='text' id='msg-input' name='message' class='form-control' placeholder='send a message to the room' autofocus />
     <input type='submit' id='msg-submit' class='btn btn-primary' value='Send' />
-
   </form>
 
   <div id='message-board'></div>

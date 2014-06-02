@@ -1,4 +1,3 @@
-
 //    Main page for group_chat application, but really 
   //  just loads other modules.  Most of the server-
   //  side code for this application is in route.js.
@@ -20,9 +19,10 @@ app.configure(function()
     //    handle static contents
     app.use(express.static(path.join(__dirname, 'public')));
 
-    //    sessions support enabled.
+    //    session support enabled.
     app.use(express.session({secret: 'peach'}));
 
+    //    use EJS (default is Jade)
     app.set('view engine', 'ejs');
   });
 

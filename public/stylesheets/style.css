@@ -1,40 +1,50 @@
 /*
-  CSS file for the real-time groiup chat application
+  CSS file for the real-time group chat application.
+  UI elements in this single-page app:  
+  1) title, 2) room, 3) message entry, 4) message list.
 */
 body
 {
   font-family: sans-serif;
 }
 
-h3
+/*  theme color derived from Bootstrap btn-primary (1, 2, 4)  */
+.gc-blue
 {
-  color: #226baa;
+  color: #306A9C;
+}
+
+/*  top title text (1)  */
+.gc-title
+{
   margin: 12px;
 }
 
-h4
+/*  indicates the name of the chat room (2)  */
+.gc-room
 {
-  color: #226baa;
   margin-left: 15px;
 }
 
-span.name
-{
-  color: #226baa;
-  font-weight: 700;
-}
-
-#new-msg-form
+/*  form to enter a msg (3)  */
+#new-msg-form, #message-board
 {
   margin: 12px;
 }
 
+/*  running list of msgs in the room (4)  */
 #message-board
 {
   border: 1px solid lightgrey;
   border-radius: 4px;
-  margin: 12px;
   min-height: 90px;
   overflow: auto;
   padding: 6px;
 }
+
+/*  user's name, prefixed to each comment (4)  */
+.gc-name
+{
+  font-weight: 700;
+}
+
