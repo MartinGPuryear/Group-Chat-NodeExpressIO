@@ -5,17 +5,6 @@ module.exports = function Route(app)
 
 //  Worker functions
 
-  //    Is this session already active?  
-  function session_already_connected(request)
-    {
-      if (request.session.connect_count > 1)
-      {
-        console.log('new_user_requested.  Already logged in and connect_count incremented, so doing nothing else....'); 
-        return true;
-      }
-      return false;
-    }
-
   //    Validate the name/room that the client sent.  
     //  Don't let malformed request.data crash us.
     //  Name and Room can both be any combination of
@@ -56,16 +45,13 @@ module.exports = function Route(app)
 //  Routing functions
 
   //    RECEIVE 'client_ready' upon initial client connect.
-    //  Define session connect_count if needed, then increment.
   app.io.route('client_ready', function(request)
     {
-        //  convert to 0, if undefined
-      request.session.connect_count = request.session.connect_count || 0;   
-      request.session.connect_count++;
+      console.log("'client_ready' received");
     });
 
   //    RECEIVE 'new_user_requested' when client send name/room.
-    //  Return immediately if already connected or malformed data.
+    //  Return immediately if user input data are invalid (null).
     //  Save name/room to the session; increment num_users for this
     //  room; join client to the room; create a msg that this client
     //  joined the room; push the msg to the room's msg queue; 
@@ -74,7 +60,7 @@ module.exports = function Route(app)
     //  this "new client has joined" one)
   app.io.route('new_user_requested', function(request)
     {
-      if (session_already_connected(request) || !validate_inputs(request))
+      if (!validate_inputs(request))
       {
         return;         //  error msg already emitted back to client
       }
@@ -120,25 +106,15 @@ module.exports = function Route(app)
     //  Triggered by user refresh or close-tab/close-window. 
     //  Check for undefined session variables (occurs for clients
     //  that are connected during a server reboot): just exit.
-    //  Decrement connect_count; do nothing else if client still
-    //  has another connection (if connect_count is still > 0).
     //  Decrement num_users[room] and detach user from the room.
     //  If the room is now empty, clear the message queue. Else,
     //  create a 'user departed' msg and BROADCAST(room) it. 
     //  Clear out the session struct before leaving altogether.
   app.io.route('disconnect', function(request)
     {      
-      if (  !request.session      || !request.session.user_name 
-         || !request.session.room || !request.session.connect_count )
+      if ( !request.session || !request.session.user_name || !request.session.room )
       {
-        console.log("disconnect with undefined session/name/room/connect_count");
-        return;
-      }
-
-      request.session.connect_count--;
-      if (request.session.connect_count > 1)
-      {
-        console.log('disconnect, but session still has connect_count');
+        console.log("disconnect with undefined session/name/room");
         return;
       }
       num_users[request.session.room]--;
@@ -154,10 +130,10 @@ module.exports = function Route(app)
       }
       else
       {
-          room_msgs[request.session.room] = null;
-          num_users[request.session.room] = null;
+          // room_msgs[request.session.room] = null;
+          // num_users[request.session.room] = null;
+          room_msgs[request.session.room] = num_users[request.session.room] = null;
       }
-
       request.session = null;
     });
 
